@@ -158,20 +158,25 @@ def train_with_h2o():
     splits=train_df.split_frame(ratios = [0.9], seed = 1)
     train=splits[0]
     test=splits[1]
-    #cv
-    aml1 = H2OAutoML(max_runtime_secs=1200, seed=1, project_name="cv",max_models=1000)
+    #part
+    aml1 = H2OAutoML(max_runtime_secs=600, seed=1, project_name="part_data_train")
     aml1.train(x=x,y=y,training_frame=train,leaderboard_frame=test)
     #full data train
-    aml2 = H2OAutoML(max_runtime_secs=1200, seed=1, project_name="full_data_train",max_models=1000)
+    aml2 = H2OAutoML(max_runtime_secs=600, seed=1, project_name="full_data_train")
     aml2.train(x=x, y=y, training_frame=train_df)
+    path1=h2o.save_model(model=aml1,path='models',force=True)
+    path2=h2o.save_model(model=aml2,path='models',force=True)
     print(aml1.leaderboard)
     print('++++++++++++++++++++++')
     print(aml2.leaderboard)
     ans1=aml1.predict(raw_test_df[:,1:])
     ans2=aml2.predict(raw_test_df[:,1:])
-    res1=pd.DataFrame({'id': raw_test_df[:,1].values,'score':ans1})
-    res2=pd.DataFrame({'id': raw_test_df[:,1].values,'score':ans2})
+    print(aml1.leader.variable_importances)
+    print(aml2.leader.variable_importances)
+    res1=pd.DataFrame({'id': raw_test_df[:,1],'score':ans1})
+    res2=pd.DataFrame({'id': raw_test_df[:,1],'score':ans2})
     res1.to_csv('data/h2oPredV1.csv',index=False)
     res2.to_csv('data/h2oPredV2.csv',index=False)
+
 if __name__=='__main__':
     train_with_h2o()
