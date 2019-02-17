@@ -146,6 +146,7 @@ def train_with_h2o(time):
     import h2o
     from h2o.automl import H2OAutoML
     h2o.init()
+    h2o.remove_all()
     raw_train_df=h2o.import_file(path='data/train_dataset/train_dataset_temp.csv')
     raw_test_df=h2o.import_file(path='data/test_dataset/test_dataset_temp.csv')
     train_df=raw_train_df[:,1:]
@@ -158,36 +159,45 @@ def train_with_h2o(time):
     splits=train_df.split_frame(ratios = [0.9], seed = 1)
     train=splits[0]
     test=splits[1]
-    #part
-    aml1 = H2OAutoML(max_runtime_secs=time, seed=2019, project_name="part_data_train")
-    aml1.train(x=x,y=y,training_frame=train,leaderboard_frame=test)
+    #part 50000行
+    # aml1 = H2OAutoML(max_runtime_secs=time,balance_classes=False,stopping_tolerance=0.005,stopping_rounds=50,sort_metric='MAE',stopping_metric='MAE',seed=2019, project_name="part_data_train")
+    # aml1.train(x=x,y=y,training_frame=train,leaderboard_frame=test)
     #full data train
-    aml2 = H2OAutoML(max_runtime_secs=time, seed=2019, project_name="full_data_train")
+    aml2 = H2OAutoML(max_runtime_secs=time,balance_classes=False,stopping_tolerance=0.005,stopping_rounds=50,sort_metric='MAE',stopping_metric='MAE', seed=2019, project_name="full_data_train")
     aml2.train(x=x, y=y, training_frame=train_df)
     # path1=h2o.save_model(model=aml1,path='models',force=True)
     # path2=h2o.save_model(model=aml2,path='models',force=True)
-    print(aml1.leaderboard)
+    # print(aml1.leaderboard)
     print('++++++++++++++++++++++')
     print(aml2.leaderboard)
-    ans1=aml1.predict(raw_test_df[:,1:])
+    # ans1=aml1.predict(raw_test_df[:,1:])
     ans2=aml2.predict(raw_test_df[:,1:])
-    print(ans1)
+    # print(ans1)
     print(ans2)
-    ans1=ans1.as_data_frame()
+    # ans1=ans1.as_data_frame()
     ans2=ans2.as_data_frame()
-    ans1.to_csv('data/ans1.csv',index=False)
-    ans2.to_csv('data/ans2.csv',index=False)
+    # ans1.to_csv('data/ans1.csv',index=False)
+    ans2.to_csv('data/ans2_time_{}.csv'.format(str(time)),index=False)
 
-    res1=pd.DataFrame()
+    # res1=pd.DataFrame()
     temp=pd.read_csv('data/test_dataset/test_dataset_temp.csv')
-    res1['id']=temp['var_0']
-    res1['score']=ans1.values
-    res1.to_csv('data/h2o_pred_submission_v1.csv',index=False)
+    # res1['id']=temp['var_0']
+    # res1['score']=ans1.values
+    # res1.to_csv('data/h2o_pred_submission_v1.csv',index=False)
 
     res2=pd.DataFrame()
     res2['id']=temp['var_0']
     res2['score']=ans2.values
-    res2.to_csv('data/h2o_pred_submission_v2.csv',index=False)
+    res2['score'] = res2['score'].apply(lambda x: int(x) if (x - int(x)) < 0.5 else int(x) + 1)
+    res2.to_csv('data/h2o_pred_submission_int_v2_time_{}.csv'.format(time),index=False)
+
+def makeup(time):
+    # res1=pd.read_csv('data/h2o_pred_submission_v1.csv')
+    res2=pd.read_csv('data/h2o_pred_submission_v2_time_{}.csv'.format(time))
+    # res1['score']=res1['score'].apply(lambda x:int(x) if (x-int(x))<0.5 else int(x)+1)
+    res2['score']=res2['score'].apply(lambda x:int(x) if (x-int(x))<0.5 else int(x)+1)
+    # res1.to_csv('data/h2oSubmission_final_v1.csv',index=False)
+    res2.to_csv('data/h2oSubmission_final_v2_time_{}.csv'.format(time),index=False)
 
 if __name__=='__main__':
-    train_with_h2o(36000)
+    train_with_h2o(72000)
