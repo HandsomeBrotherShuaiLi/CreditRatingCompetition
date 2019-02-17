@@ -142,7 +142,7 @@ def training(name):
     sub_df['score']=predictions
     sub_df.to_csv('data/lgbm_submission_{}.csv'.format(name),index=False)
 
-def train_with_h2o():
+def train_with_h2o(time):
     import h2o
     from h2o.automl import H2OAutoML
     h2o.init()
@@ -159,24 +159,35 @@ def train_with_h2o():
     train=splits[0]
     test=splits[1]
     #part
-    aml1 = H2OAutoML(max_runtime_secs=600, seed=1, project_name="part_data_train")
+    aml1 = H2OAutoML(max_runtime_secs=time, seed=2019, project_name="part_data_train")
     aml1.train(x=x,y=y,training_frame=train,leaderboard_frame=test)
     #full data train
-    aml2 = H2OAutoML(max_runtime_secs=600, seed=1, project_name="full_data_train")
+    aml2 = H2OAutoML(max_runtime_secs=time, seed=2019, project_name="full_data_train")
     aml2.train(x=x, y=y, training_frame=train_df)
-    path1=h2o.save_model(model=aml1,path='models',force=True)
-    path2=h2o.save_model(model=aml2,path='models',force=True)
+    # path1=h2o.save_model(model=aml1,path='models',force=True)
+    # path2=h2o.save_model(model=aml2,path='models',force=True)
     print(aml1.leaderboard)
     print('++++++++++++++++++++++')
     print(aml2.leaderboard)
     ans1=aml1.predict(raw_test_df[:,1:])
     ans2=aml2.predict(raw_test_df[:,1:])
-    print(aml1.leader.variable_importances)
-    print(aml2.leader.variable_importances)
-    res1=pd.DataFrame({'id': raw_test_df[:,1],'score':ans1})
-    res2=pd.DataFrame({'id': raw_test_df[:,1],'score':ans2})
-    res1.to_csv('data/h2oPredV1.csv',index=False)
-    res2.to_csv('data/h2oPredV2.csv',index=False)
+    print(ans1)
+    print(ans2)
+    ans1=ans1.as_data_frame()
+    ans2=ans2.as_data_frame()
+    ans1.to_csv('data/ans1.csv',index=False)
+    ans2.to_csv('data/ans2.csv',index=False)
+
+    res1=pd.DataFrame()
+    temp=pd.read_csv('data/test_dataset/test_dataset_temp.csv')
+    res1['id']=temp['var_0']
+    res1['score']=ans1.values
+    res1.to_csv('data/h2o_pred_submission_v1.csv',index=False)
+
+    res2=pd.DataFrame()
+    res2['id']=temp['var_0']
+    res2['score']=ans2.values
+    res2.to_csv('data/h2o_pred_submission_v2.csv',index=False)
 
 if __name__=='__main__':
-    train_with_h2o()
+    train_with_h2o(36000)
